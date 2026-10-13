@@ -20,3 +20,7 @@ PREDICTION_COUNT = Counter(
     ["sentiment"]
 )
 
+PREDICTION_ERRORS = Counter(
+    "sentiment_prediction_errors_total",
+    "Numero totale di errori durante la predizione"
+)

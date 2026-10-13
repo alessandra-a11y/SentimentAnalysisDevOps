@@ -2,17 +2,17 @@ import pytest
 from fastapi import HTTPException
 
 from progetto import valida_richiesta
-from models.sentiment_analisys import Testo
+from models.sentiment_analisys import ProductReview
 
 
 def test_recensione_valida():
-    testo = Testo(review="This product is amazing!")
+    testo = ProductReview(review="This product is amazing!")
 
     valida_richiesta(testo)
 
 
 def test_recensione_vuota():
-    testo = Testo(review="")
+    testo = ProductReview(review="")
 
     with pytest.raises(HTTPException) as exc:
         valida_richiesta(testo)
@@ -22,7 +22,7 @@ def test_recensione_vuota():
 
 
 def test_recensione_solo_spazi():
-    testo = Testo(review="     ")
+    testo = ProductReview(review="     ")
 
     with pytest.raises(HTTPException) as exc:
         valida_richiesta(testo)
@@ -31,7 +31,7 @@ def test_recensione_solo_spazi():
 
 
 def test_recensione_solo_newline():
-    testo = Testo(review="\n\t")
+    testo = ProductReview(review="\n\t")
 
     with pytest.raises(HTTPException) as exc:
         valida_richiesta(testo)

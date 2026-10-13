@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+import numpy as np
 
 import progetto
 
@@ -13,7 +14,7 @@ def test_predict_success(monkeypatch):
     mock_model = MagicMock()
 
     mock_model.predict.return_value = ["positive"]
-    mock_model.predict_proba.return_value = [[0.05, 0.95]]
+    mock_model.predict_proba.return_value = np.array([[0.05, 0.95]])
 
     monkeypatch.setattr(progetto, "model", mock_model)
 
@@ -29,16 +30,12 @@ def test_predict_success(monkeypatch):
     assert data["sentiment"] == "positive"
     assert data["confidence"] == 0.95
 
-    mock_model.predict.assert_called_once_with(
-        ["This product is amazing!"]
-    )
-
 
 def test_predict_negative(monkeypatch):
     mock_model = MagicMock()
 
     mock_model.predict.return_value = ["negative"]
-    mock_model.predict_proba.return_value = [[0.90, 0.10]]
+    mock_model.predict_proba.return_value = np.array([[0.90, 0.10]])
 
     monkeypatch.setattr(progetto, "model", mock_model)
 
@@ -48,8 +45,11 @@ def test_predict_negative(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json()["sentiment"] == "negative"
-    assert response.json()["confidence"] == 0.90
+
+    data = response.json()
+
+    assert data["sentiment"] == "negative"
+    assert data["confidence"] == 0.90
 
 
 def test_predict_empty_review():

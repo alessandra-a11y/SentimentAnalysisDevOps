@@ -1,15 +1,22 @@
 import pickle
+import time
+from pathlib import Path
+
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette import status
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException,Response
 import uvicorn
 import logging
+
+from starlette.requests import Request
+
+from models.metrics import REQUEST_COUNT, REQUEST_LATENCY,PREDICTION_COUNT, PREDICTION_ERRORS
+from models.sentiment_analisys import ProductReview, PredictionOutput
 
 # definisco la configurazione dei log per tenere traccia delle chiamate effettuate all'endpoint, della response
 # e di eventuali errori.
 # Uso il livello logging.INFO in modo da tracciare anche i messaggi informativi oltre quelli che di errore
-# Definisco il file dove sarà salvato il log che avrà il nome MuseumLangAPI.log
-
+# Definisco il file dove sarà salvato il log che avrà il nome SentimentAnalysisAPI.log
 LOG_FORMAT = "[%(levelname)s]%(name)s - %(asctime)s - %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_LEVEL = logging.INFO
@@ -17,10 +24,10 @@ LOG_LEVEL = logging.INFO
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 
-file_handler = logging.FileHandler("MuseumLangAPI.log")
+file_handler = logging.FileHandler("SentimentAnalysisAPI.log")
 file_handler.setLevel(LOG_LEVEL)
 
-formatter = logging.Formatter(LOG_FORMAT,datefmt=DATE_FORMAT)
+formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
 file_handler.setFormatter(formatter)
 
 # Per evitare duplicazioni se il logger è inizializzato più volte
@@ -30,96 +37,128 @@ if not logger.handlers:
 # Leggo e carico il file contenente il modello usato per effettuare la predizione
 # che si trova nella stessa cartella del file progetto.py
 
-model_filename  = 'language_detection_pipeline.pkl'
+BASE_DIR = Path(__file__).resolve().parent
 
-with open(model_filename, 'rb') as file:
+filename = BASE_DIR / "sentiment_analysis_model.pkl"
+
+
+with open(filename, 'rb') as file:
     model = pickle.load(file)
 
-# definisco le classi che serviranno per effettuare la request  (Testo) e per restituire la response (PredictionOutput)
-# con i dati richiesti dalle specifiche
-
-class Testo(BaseModel):
-    text: str
-
-class PredictionOutput(BaseModel):
-    confidence: float
-    language_code: str
-
 # inizializzo l'oggetto di FastAPI
-app = FastAPI(title='MuseumLangAPI',description='Rest API per il riconoscimento della lingua di testi di un museo',version='1.0.0',include_in_schema=True)
+app = FastAPI(title='SentimentAnalysisAPI', description='Rest API per sentiment analysis sulle recensioni',
+              version='1.0.0', include_in_schema=True)
 
-"""
-    Metodo valida_richiesta per validare l'input della request. 
-    Se il testo (text) non è stato definito (è vuoto composto solo da spazi
-    lancia HTTPException con stato 400 e messaggio nel dettaglio)
 
-"""
-def valida_richiesta(testo:Testo):
-    if testo.text.strip() == '':
+def valida_richiesta(testo: ProductReview):
 
-        logger.error(f"ERROR - endpoint=/identify-language - Testo della richiesta non definito")
+    """
+        Metodo valida_richiesta per validare l'input della request.
+        Se il testo (text) non è stato definito (è vuoto composto solo da spazi
+        lancia HTTPException con stato 400 e messaggio nel dettaglio)
+
+    """
+
+    if testo.review.strip() == '':
+        logger.error(f"ERROR - endpoint=/predict - Testo della richiesta non definito")
 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Testo della richiesta non definito")
 
-"""
-    Metodo predict_language per effettuare la predizione della lingua del testo passato nella richiesta. 
-    Restuisce un oggetto PredictionOutput contenente il codice della lingua predetta e il grado di confidenza
-    della predizione effettuata dal modello.
-    In caso di errore (che non sia gestito nella validazione della richiesta) lancia  HTTPException con codice 500
-    e viene tracciato nel log
-"""
-def predict_language(testo: Testo):
 
-    logger.info(f"REQUEST - endpoint=/identify-language - text={testo.text}")
+
+
+
+def predict(testo: ProductReview):
+
+    """
+        Metodo predict che accetta una recensione in JSON e restituisce il sentimento analizzato.
+        Restuisce un oggetto PredictionOutput contenente il sentiment e il grado di confidenza
+        della predizione effettuata dal modello.
+        In caso di errore (che non sia gestito nella validazione della richiesta) lancia  HTTPException con codice 500
+        e viene tracciato nel log
+    """
+
+    logger.info(f"REQUEST - endpoint=/predict - review={testo.review}")
 
     valida_richiesta(testo)
 
     try:
-        text_to_predict = [testo.text]
-        predicted_language = model.predict(text_to_predict)
-        predicted_language_text = predicted_language[0]
+        text_to_predict = [testo.review]
+        predicted_sentiment = model.predict(text_to_predict)
+        predicted_sentiment_text = predicted_sentiment[0]
 
-        if predicted_language_text is None or str(predicted_language_text).strip() == '':
-
-            logger.error(f"ERROR - endpoint=/identify-language - text={testo.text} - La lingua non può essere identificata")
+        if predicted_sentiment_text is None or str(predicted_sentiment_text).strip() == '':
+            logger.error(f"ERROR - endpoint=/predict - text={testo.review} - Il sentiment della recensionenon può essere identificato")
 
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="La lingua non può essere identificata"
+                detail="Il sentiment della recensione non può essere identificato"
             )
 
         predicted_proba = model.predict_proba(text_to_predict)[0]
         confidence = round(float(predicted_proba.max()), 2)
 
-        logger.info(f"RESPONSE - endpoint=/identify-language - language={predicted_language_text}, confidence={confidence}")
+        PREDICTION_COUNT.labels(
+            sentiment=str(predicted_sentiment_text)
+        ).inc()
 
+        logger.info(f"RESPONSE - endpoint=/predict - language={predicted_sentiment_text}, confidence={confidence}")
 
-        return PredictionOutput(
-            confidence=confidence,
-            language_code=predicted_language_text
-        )
+        return PredictionOutput(sentiment=predicted_sentiment_text,confidence=confidence)
 
     except HTTPException:
         raise
     except Exception as e:
 
-        logger.error(f"ERROR - endpoint=/identify-language - {str(e)}")
+        logger.error(f"ERROR - endpoint=/predict - {str(e)}")
 
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Non è possibile identificare la lingua della frase"
-        )
+        PREDICTION_ERRORS.inc()
+
+        logger.exception("Errore durante la predizione")
+
+        raise HTTPException(status_code=500,detail="Non è possibile identificare il sentiment della recensione")
 
 
-# endpoint da chiamare per l'identificazione del testo passato come input
-#riceve in ingresso un oggetto Testo e restituisce in output un oggetto PredictionOutput
-@app.post("/identify-language")
-def identify_language(testo:Testo) -> PredictionOutput:
-    return predict_language(testo)
+# endpoint da chiamare per l'identificazione del sentimenti di una recensione passata come input
+# riceve in ingresso un oggetto Testo e restituisce in output un oggetto PredictionOutput
+@app.post("/predict")
+def predict_sentiment(testo: ProductReview) -> PredictionOutput:
+    return predict(testo)
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return Response(content=generate_latest(),media_type=CONTENT_TYPE_LATEST)
+
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+
+    start_time = time.perf_counter()
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        REQUEST_COUNT.labels(
+            method=request.method,
+            endpoint=request.url.path,
+            status_code="500"
+        ).inc()
+        raise
+    else:
+        REQUEST_COUNT.labels(
+            method=request.method,
+            endpoint=request.url.path,
+            status_code=str(response.status_code)
+        ).inc()
+
+        return response
+    finally:
+        duration = time.perf_counter() - start_time
+
+        REQUEST_LATENCY.labels(
+            endpoint=request.url.path
+        ).observe(duration)
 
 # lancio dell'applicazione
 if __name__ == '__main__':
     uvicorn.run(app)
-
-
