@@ -42,12 +42,28 @@ pipeline {
     }
 
     post {
-        success {
-            echo 'Pipeline completata con successo!'
-        }
-
-        failure {
-            echo 'Pipeline fallita: controllare i log Jenkins.'
-        }
+    success {
+        echo """
+        ========================================
+        PIPELINE COMPLETATA CON SUCCESSO
+        Job: ${env.JOB_NAME}
+        Build: ${env.BUILD_NUMBER}
+        Immagine: ${env.IMAGE_NAME}:${env.BUILD_NUMBER}
+        Risultato: SUCCESS
+        ========================================
+        """
     }
+
+    failure {
+        echo """
+        ========================================
+        PIPELINE FALLITA
+        Job: ${env.JOB_NAME}
+        Build: ${env.BUILD_NUMBER}
+        Risultato: FAILURE
+        Controllare la Console Output di Jenkins.
+        ========================================
+        """
+    }
+}
 }
