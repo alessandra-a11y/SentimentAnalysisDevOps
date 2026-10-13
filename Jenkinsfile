@@ -1,4 +1,4 @@
-
+// Test attivazione automatica Jenkins tramite GitHub Webhook
 pipeline {
     agent any
 
