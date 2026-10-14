@@ -130,6 +130,25 @@ def predict_sentiment(testo: ProductReview) -> PredictionOutput:
 def metrics():
     return Response(content=generate_latest(),media_type=CONTENT_TYPE_LATEST)
 
+from fastapi import HTTPException
+
+@app.get("/health", tags=["Monitoring"])
+def health_check():
+    """
+       Verifica lo stato del servizio di Sentiment Analysis.
+       Controlla che il modello sia disponibile, restituendo HTTP 200
+       se il servizio è operativo oppure HTTP 503 in caso contrario.
+       """
+
+    if model is None:
+        raise HTTPException(status_code=503,detail="Modello Sentiment Analisys non disponibile")
+
+    return {
+        "status": "healthy",
+        "model": "loaded",
+        "service": "sentiment-analysis"
+    }
+
 @app.middleware("http")
 async def prometheus_middleware(request: Request, call_next):
 
@@ -158,6 +177,9 @@ async def prometheus_middleware(request: Request, call_next):
         REQUEST_LATENCY.labels(
             endpoint=request.url.path
         ).observe(duration)
+
+
+
 
 # lancio dell'applicazione
 if __name__ == '__main__':

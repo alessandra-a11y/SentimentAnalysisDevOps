@@ -39,6 +39,37 @@ pipeline {
                 '''
             }
         }
+
+        stage('Health Check') {
+            steps {
+                powershell '''
+                    $maxRetries = 10
+                    $success = $false
+
+                    for ($i = 1; $i -le $maxRetries; $i++) {
+                        try {
+                            $response = Invoke-RestMethod -Uri "http://localhost:8000/health" -TimeoutSec 5
+
+                            if ($response.status -eq "healthy") {
+                                Write-Host "Health Check OK"
+                                $success = $true
+                                break
+                            }
+                        }
+                        catch {
+                            Write-Host "Tentativo $i fallito. Attendo 3 secondi..."
+                            Start-Sleep -Seconds 3
+                        }
+                    }
+
+                    if (-not $success) {
+                        throw "Health Check fallito: servizio non disponibile"
+                    }
+                '''
+            }
+        }
+
+
     }
 
     post {
