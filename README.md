@@ -405,5 +405,3 @@ Per dimostrare il funzionamento end-to-end:
 9. Acquisire gli screenshot e inserirli nella sezione **Screenshot del monitoraggio**.
 
 ---
-
-**Obiettivo del progetto:** realizzare il percorso **commit → test → build → deploy → osservabilità**, integrando un modello di Machine Learning già addestrato in un servizio REST containerizzato e monitorabile.
