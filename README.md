@@ -321,39 +321,27 @@ Per generare dati da visualizzare, inviare alcune richieste a `POST /predict`, p
 
 ## 10. Screenshot del monitoraggio
 
-Questa sezione è predisposta per documentare il funzionamento reale delle dashboard. Salvare le immagini nella cartella `docs/screenshots/` usando i nomi indicati di seguito: GitHub le mostrerà direttamente nel README.
+Questa sezione documenta il funzionamento reale delle dashboard.
 
 ### 10.1 Panoramica dashboard Grafana
 
-![Panoramica dashboard Grafana](docs/screenshots/grafana-overview.png)
-
-*Screenshot da inserire: vista complessiva della dashboard «Sentiment Analysis - API Monitoring».*
+![Panoramica dashboard Grafana](docs/screenshots/dashboard_grafana.png)
 
 ### 10.2 Latenza e traffico delle API
 
 ![Latenza e richieste HTTP](docs/screenshots/grafana-latency-requests.png)
 
-*Screenshot da inserire: pannelli relativi al tempo di risposta p95 e alle richieste API al secondo.*
-
 ### 10.3 Predizioni ed errori
 
 ![Predizioni ed errori](docs/screenshots/grafana-predictions-errors.png)
-
-*Screenshot da inserire: andamento delle predizioni per sentiment e degli errori di predizione.*
 
 ### 10.4 Utilizzo CPU e memoria
 
 ![CPU e memoria del processo](docs/screenshots/grafana-cpu-memory.png)
 
-*Screenshot da inserire: pannelli relativi alle risorse utilizzate dal processo FastAPI.*
-
 ### 10.5 Verifica target Prometheus (opzionale)
 
 ![Target Prometheus UP](docs/screenshots/prometheus-targets.png)
-
-*Screenshot da inserire: pagina `/targets` di Prometheus con il target `sentiment-fastapi` in stato UP.*
-
-> **Importante:** questi screenshot sono segnaposto. Prima della consegna creare la cartella, acquisire le schermate reali, salvarle con gli stessi nomi e aggiungerle al repository. Se si preferisce usare meno screenshot, eliminare dal README i blocchi non necessari.
 
 ## 11. Troubleshooting
 
