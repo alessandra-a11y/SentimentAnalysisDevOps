@@ -393,3 +393,7 @@ Per dimostrare il funzionamento end-to-end:
 9. Acquisire gli screenshot e inserirli nella sezione **Screenshot del monitoraggio**.
 
 ---
+
+## 14. Link al repository GitHub
+
+https://github.com/alessandra-a11y/SentimentAnalysisDevOps.git
